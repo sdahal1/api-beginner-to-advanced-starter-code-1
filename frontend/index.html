@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shopping API Lab</title>
+  <style>
+    :root { font: 17px/1.5 system-ui, sans-serif; color: #162738; background: #eef3f8; }
+    body { margin: 0; }
+    main { max-width: 960px; padding: 38px 20px; margin: auto; }
+    h1 { margin-bottom: 8px; font-size: clamp(2rem, 6vw, 3rem); }
+    p { margin-top: 8px; }
+    .eyebrow { color: #536577; font-size: .8rem; letter-spacing: .15em; font-weight: 700; }
+    .panel { background: white; padding: 24px; border-radius: 18px; margin: 24px 0; border: 1px solid #dce4ed; }
+    label { display: block; margin: 12px 0 5px; font-weight: 650; }
+    input { box-sizing: border-box; width: 100%; font: inherit; border: 1px solid #8495a6; border-radius: 8px; padding: 11px; }
+    button { background: #165dba; color: white; border: 0; border-radius: 8px; padding: 11px 18px; font: inherit; cursor: pointer; margin-top: 12px; }
+    button:disabled { opacity: .6; cursor: wait; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+    article { border: 1px solid #dce4ed; border-radius: 12px; padding: 18px; }
+    article h3 { margin-top: 0; }
+    code, pre { font-family: ui-monospace, monospace; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #132536; color: #edf5ff; padding: 20px; border-radius: 10px; }
+    .muted { color: #536577; }
+    #status { min-height: 26px; }
+    :focus-visible { outline: 3px solid #ee9900; outline-offset: 3px; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">NEW TO AWS · API GATEWAY PART 2</div>
+  <h1>Shopping API Lab</h1>
+  <p>Search a fake catalog, open product 1738, and inspect the JSON your API returns.</p>
+  <section class="panel">
+    <form id="search-form">
+      <label for="base-url">Deployed API base URL</label>
+      <input id="base-url" type="url" required placeholder="https://your-api-id.execute-api.your-region.amazonaws.com" autocomplete="off">
+      <label for="query">Product search</label>
+      <input id="query" value="headphones" maxlength="80" autocomplete="off">
+      <button id="search-button" type="submit">Search products</button>
+    </form>
+    <p id="status" role="status" aria-live="polite"></p>
+    <div id="products" class="grid"></div>
+  </section>
+  <section class="panel" aria-labelledby="response-heading">
+    <h2 id="response-heading">Last API response</h2>
+    <p id="request-line" class="muted">Submit a search to send GET /products?q=headphones.</p>
+    <pre id="response-body">No request yet.</pre>
+  </section>
+  <p class="muted">Fake products only. No account, payment, or order data. Serve this page at <code>http://localhost:3000</code> for the supplied CORS configuration.</p>
+</main>
+<script>
+  const byId = (id) => document.getElementById(id);
+  let busy = false;
+
+  function apiUrl(path, query) {
+    const base = new URL(byId('base-url').value.trim());
+    if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash) {
+      throw new Error('Enter your HTTPS API base URL without credentials, a query, or a fragment.');
+    }
+    const url = new URL(base.href.replace(/\/+$/, '') + path);
+    if (query !== undefined) url.searchParams.set('q', query);
+    return url;
+  }
+
+  async function request(path, query) {
+    const url = apiUrl(path, query);
+    byId('status').textContent = 'Sending request…';
+    byId('request-line').textContent = 'GET ' + url.href;
+    const response = await fetch(url, { credentials: 'omit', signal: AbortSignal.timeout(10000) });
+    const data = await response.json();
+    byId('response-body').textContent = JSON.stringify(data, null, 2);
+    byId('status').textContent = 'HTTP ' + response.status;
+    if (!response.ok) throw new Error(data.message || ('Request failed: HTTP ' + response.status));
+    return data;
+  }
+
+  async function run(action) {
+    if (busy) return;
+    busy = true;
+    byId('search-button').disabled = true;
+    try { await action(); }
+    catch (error) {
+      byId('status').textContent = error.message + ' Check the API URL, network, and allowed CORS origin.';
+    } finally {
+      busy = false;
+      byId('search-button').disabled = false;
+    }
+  }
+
+  byId('search-form').addEventListener('submit', (event) => {
+    event.preventDefault();
+    run(async () => {
+      const data = await request('/products', byId('query').value);
+      byId('products').replaceChildren();
+      for (const product of data.items) {
+        const card = document.createElement('article');
+        const title = document.createElement('h3');
+        title.textContent = product.name;
+        const price = document.createElement('p');
+        price.textContent = new Intl.NumberFormat('en-US', { style: 'currency', currency: product.currency }).format(product.price);
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = 'View product ' + product.productId;
+        button.addEventListener('click', () => run(() => request('/products/' + encodeURIComponent(product.productId))));
+        card.append(title, price, button);
+        byId('products').append(card);
+      }
+      if (data.items.length === 0) byId('products').textContent = 'No matching products.';
+    });
+  });
+</script>
+</body>
+</html>

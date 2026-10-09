@@ -1,0 +1,12 @@
+{
+  "version": "2.0",
+  "routeKey": "GET /products",
+  "rawPath": "/products",
+  "rawQueryString": "q=headphones",
+  "queryStringParameters": {"q": "headphones"},
+  "requestContext": {
+    "requestId": "local-search-request",
+    "http": {"method": "GET", "path": "/products"}
+  },
+  "isBase64Encoded": false
+}

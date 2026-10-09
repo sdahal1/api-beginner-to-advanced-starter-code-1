@@ -1,0 +1,101 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Beginner product API with two public read-only routes and fake data.
+
+Resources:
+  ApiAccessLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/vendedlogs/apigateway/${AWS::StackName}-access'
+      RetentionInDays: 7
+
+  FunctionLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}-catalog'
+      RetentionInDays: 7
+
+  CatalogApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: '$default'
+      DefinitionBody:
+        openapi: '3.0.1'
+        info:
+          title: Beginner Product API
+          version: '1.0'
+        paths: {}
+      CorsConfiguration:
+        AllowOrigins:
+          - 'http://localhost:3000'
+        AllowMethods:
+          - GET
+        MaxAge: 300
+      DefaultRouteSettings:
+        ThrottlingRateLimit: 5
+        ThrottlingBurstLimit: 10
+      AccessLogSettings:
+        DestinationArn: !GetAtt ApiAccessLogs.Arn
+        Format: '{"requestId":"$context.requestId","routeKey":"$context.routeKey","status":"$context.status","responseLatencyMs":"$context.responseLatency"}'
+
+  ProductFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteOnlyCatalogLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt FunctionLogs.Arn
+
+  ProductFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: app.handler
+      Runtime: python3.12
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 5
+      Role: !GetAtt ProductFunctionRole.Arn
+      LoggingConfig:
+        LogGroup: !Ref FunctionLogs
+        LogFormat: Text
+      Events:
+        Search:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref CatalogApi
+            Method: GET
+            Path: /products
+            PayloadFormatVersion: '2.0'
+        Detail:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref CatalogApi
+            Method: GET
+            Path: /products/{productId}
+            PayloadFormatVersion: '2.0'
+
+Outputs:
+  ApiBaseUrl:
+    Description: Use this base URL in the local frontend, without an extra stage path.
+    Value: !Sub 'https://${CatalogApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}'
+  ApiId:
+    Value: !Ref CatalogApi
+  ApiAccessLogGroup:
+    Value: !Ref ApiAccessLogs
+  FunctionLogGroup:
+    Value: !Ref FunctionLogs

@@ -1,0 +1,27 @@
+Shopping API Lab local validation
+Checked: 2026-10-09
+
+PASS: python3 -m unittest discover -s tests -v
+      Python 3.12.14; 10 tests passed.
+      Includes successful product lookup, search/filter behavior, empty results,
+      malformed IDs, missing products, unsupported route, payload version,
+      and safe logging with request-ID correlation.
+
+PASS: cfn-lint template.yaml --regions us-east-1
+      cfn-lint 1.57.2; AWS SAM translator 1.114.0; exit 0; no findings.
+      Tools were installed into a temporary private validation directory.
+      This is template/schema validation, not a deployed infrastructure test.
+      The lint Region is a schema selection, not a deployment choice.
+
+PASS: node --check <extracted frontend script>
+      Embedded JavaScript parses successfully.
+
+CHECKED: SAM translator 1.114.0 generates AutoDeploy: true for the HTTP API stage.
+CHECKED: AWS runtime documentation lists python3.12 as supported.
+
+NOT RUN: sam build, sam deploy, or a live end-to-end browser request.
+NOT VERIFIED: AWS account support, deployment permissions, live IAM behavior,
+              CORS responses, CloudWatch log delivery, or managed throttling.
+
+No AWS resources were created. No authentication or private-data routes exist
+in this starter. They are future extensions requiring their own validation.

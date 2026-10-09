@@ -1,0 +1,12 @@
+{
+  "version": "2.0",
+  "routeKey": "GET /products/{productId}",
+  "rawPath": "/products/1738",
+  "rawQueryString": "",
+  "requestContext": {
+    "requestId": "local-product-request",
+    "http": {"method": "GET", "path": "/products/1738"}
+  },
+  "pathParameters": {"productId": "1738"},
+  "isBase64Encoded": false
+}
